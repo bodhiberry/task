@@ -114,7 +114,7 @@ export async function getTasks() {
     orderBy: { createdAt: "desc" },
   });
 
-  return tasks.map(task => ({
+  return tasks.map((task: any) => ({
     ...task,
     dueDate: task.dueDate?.toISOString() || null,
     createdAt: task.createdAt.toISOString(),
@@ -142,7 +142,7 @@ export async function getTask(id: string) {
     dueDate: task.dueDate?.toISOString() || null,
     createdAt: task.createdAt.toISOString(),
     updatedAt: task.updatedAt.toISOString(),
-    subtasks: task.subtasks.map(st => ({
+    subtasks: task.subtasks.map((st: any) => ({
       ...st,
       createdAt: st.createdAt.toISOString(),
       updatedAt: st.updatedAt.toISOString(),
@@ -169,7 +169,7 @@ export async function getActivities() {
     take: 10,
   });
 
-  return activities.map(a => ({
+  return activities.map((a: any) => ({
     ...a,
     createdAt: a.createdAt.toISOString(),
   }));
