@@ -1,13 +1,26 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
 import { Plus, X } from "lucide-react";
-import { createTask } from "@/app/actions/tasks";
+import { motion, AnimatePresence } from "framer-motion";
+import { createTask, getUsers } from "@/app/actions/tasks";
+
+interface User {
+  id: string;
+  name: string | null;
+  image: string | null;
+}
 
 export default function CreateTaskModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      getUsers().then(setUsers);
+    }
+  }, [isOpen]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -20,6 +33,8 @@ export default function CreateTaskModal() {
         description: formData.get("description") as string,
         priority: formData.get("priority") as "LOW" | "MEDIUM" | "HIGH",
         dueDate: formData.get("dueDate") as string,
+        assignedToId: formData.get("assignedToId") as string,
+        progress: parseInt(formData.get("progress") as string) || 0,
       });
       setIsOpen(false);
     } catch (error) {
@@ -33,7 +48,7 @@ export default function CreateTaskModal() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium transition-all shadow-lg shadow-blue-500/25 active:scale-95"
+        className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-blue-500 text-white font-bold hover:bg-blue-600 transition-all active:scale-[0.98] shadow-lg shadow-blue-500/25"
       >
         <Plus className="w-5 h-5" />
         New Task
@@ -47,90 +62,119 @@ export default function CreateTaskModal() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsOpen(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
             />
             
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-lg glass-card rounded-3xl p-8 overflow-hidden"
+              className="relative w-full max-w-2xl bg-zinc-900 border border-white/10 rounded-[32px] overflow-hidden shadow-2xl"
             >
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h2 className="text-2xl font-bold text-white">Create New Task</h2>
-                  <p className="text-sm text-zinc-400">Add a new task to your workspace</p>
-                </div>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="p-2 rounded-xl text-zinc-500 hover:text-white hover:bg-white/5 transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 ml-1">Task Title</label>
-                  <input
-                    name="title"
-                    required
-                    placeholder="What needs to be done?"
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 ml-1">Description</label>
-                  <textarea
-                    name="description"
-                    placeholder="Add more details..."
-                    rows={3}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all resize-none"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 ml-1">Priority</label>
-                    <select
-                      name="priority"
-                      defaultValue="MEDIUM"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all appearance-none"
-                    >
-                      <option value="LOW" className="bg-zinc-900">Low Priority</option>
-                      <option value="MEDIUM" className="bg-zinc-900">Medium Priority</option>
-                      <option value="HIGH" className="bg-zinc-900">High Priority</option>
-                    </select>
+              <div className="p-8 space-y-8">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <h2 className="text-2xl font-bold text-white">Create New Task</h2>
+                    <p className="text-sm text-zinc-500">Add a new item to your workspace</p>
                   </div>
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className="p-2 rounded-xl hover:bg-white/5 text-zinc-500 hover:text-white transition-colors"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
 
+                <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 ml-1">Due Date</label>
+                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 ml-1">Task Title</label>
                     <input
-                      name="dueDate"
-                      type="date"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all [color-scheme:dark]"
+                      name="title"
+                      required
+                      placeholder="e.g., Design System Update"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white placeholder:text-zinc-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
                     />
                   </div>
-                </div>
 
-                <div className="flex gap-4 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setIsOpen(false)}
-                    className="flex-1 px-4 py-3.5 rounded-2xl border border-white/10 text-white font-semibold hover:bg-white/5 transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="flex-1 px-4 py-3.5 rounded-2xl bg-blue-500 text-white font-semibold hover:bg-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20"
-                  >
-                    {loading ? "Creating..." : "Create Task"}
-                  </button>
-                </div>
-              </form>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 ml-1">Description</label>
+                    <textarea
+                      name="description"
+                      rows={3}
+                      placeholder="Add more details about this task..."
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white placeholder:text-zinc-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all resize-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 ml-1">Priority</label>
+                      <select
+                        name="priority"
+                        defaultValue="MEDIUM"
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all appearance-none"
+                      >
+                        <option value="LOW" className="bg-zinc-900">Low Priority</option>
+                        <option value="MEDIUM" className="bg-zinc-900">Medium Priority</option>
+                        <option value="HIGH" className="bg-zinc-900">High Priority</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 ml-1">Due Date</label>
+                      <input
+                        type="date"
+                        name="dueDate"
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all [color-scheme:dark]"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 ml-1">Assign To</label>
+                      <select
+                        name="assignedToId"
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all appearance-none"
+                      >
+                        <option value="" className="bg-zinc-900">Unassigned</option>
+                        {users.map((user) => (
+                          <option key={user.id} value={user.id} className="bg-zinc-900">
+                            {user.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 ml-1">Progress (%)</label>
+                      <input
+                        type="number"
+                        name="progress"
+                        min="0"
+                        max="100"
+                        defaultValue="0"
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setIsOpen(false)}
+                      className="flex-1 px-8 py-4 rounded-2xl border border-white/10 text-white font-bold hover:bg-white/5 transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="flex-1 px-8 py-4 rounded-2xl bg-blue-500 text-white font-bold hover:bg-blue-600 transition-all active:scale-[0.98] disabled:opacity-50"
+                    >
+                      {loading ? "Creating..." : "Create Task"}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </motion.div>
           </div>
         )}
