@@ -4,6 +4,13 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { v2 as cloudinary } from "cloudinary";
+
+cloudinary.config({
+  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 const TaskSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -12,6 +19,11 @@ const TaskSchema = z.object({
   dueDate: z.string().optional(),
   assignedToId: z.string().optional(),
   progress: z.number().min(0).max(100).default(0),
+  attachments: z.array(z.object({
+    name: z.string(),
+    url: z.string(),
+    fileType: z.string().optional(),
+  })).optional(),
 });
 
 export async function createTask(formData: z.infer<typeof TaskSchema>) {
@@ -30,6 +42,9 @@ export async function createTask(formData: z.infer<typeof TaskSchema>) {
       userId: session.user.id,
       assignedToId: assignedToId || null,
       status: "TODO",
+      attachments: {
+        create: formData.attachments || [],
+      },
     },
   });
 
@@ -132,6 +147,7 @@ export async function getTask(id: string) {
       user: { select: { name: true, image: true } },
       assignedTo: { select: { id: true, name: true, image: true } },
       subtasks: { orderBy: { createdAt: "asc" } },
+      attachments: { orderBy: { createdAt: "desc" } },
     }
   });
 
@@ -146,6 +162,10 @@ export async function getTask(id: string) {
       ...st,
       createdAt: st.createdAt.toISOString(),
       updatedAt: st.updatedAt.toISOString(),
+    })),
+    attachments: task.attachments.map((at: any) => ({
+      ...at,
+      createdAt: at.createdAt.toISOString(),
     })),
   };
 }
@@ -218,7 +238,44 @@ export async function assignTask(taskId: string, userId: string | null) {
     data: { assignedToId: userId }
   });
 
-  revalidatePath(`/tasks/${taskId}`);
-  revalidatePath("/dashboard");
   revalidatePath("/tasks");
+}
+
+export async function addAttachment(taskId: string, attachment: { name: string, url: string, fileType?: string }) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  await prisma.attachment.create({
+    data: {
+      ...attachment,
+      taskId,
+    }
+  });
+
+  revalidatePath(`/tasks/${taskId}`);
+}
+
+export async function uploadFile(formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const file = formData.get("file") as File;
+  if (!file) throw new Error("No file provided");
+
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader.upload_stream(
+      { resource_type: "auto", folder: "task_management" },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve({
+          url: result?.secure_url,
+          name: file.name,
+          fileType: result?.format
+        });
+      }
+    ).end(buffer);
+  });
 }

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Paperclip, Image as ImageIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { createTask, getUsers } from "@/app/actions/tasks";
+import { createTask, getUsers, uploadFile } from "@/app/actions/tasks";
+
 
 interface User {
   id: string;
@@ -15,6 +16,7 @@ export default function CreateTaskModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
+  const [attachments, setAttachments] = useState<{name: string, url: string, fileType: string}[]>([]);
 
   useEffect(() => {
     if (isOpen) {
@@ -35,8 +37,10 @@ export default function CreateTaskModal() {
         dueDate: formData.get("dueDate") as string,
         assignedToId: formData.get("assignedToId") as string,
         progress: parseInt(formData.get("progress") as string) || 0,
+        attachments,
       });
       setIsOpen(false);
+      setAttachments([]);
     } catch (error) {
       console.error(error);
     } finally {
@@ -155,6 +159,65 @@ export default function CreateTaskModal() {
                         className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 ml-1">Attachments</label>
+                      <div className="flex flex-wrap gap-3">
+                        <input
+                          type="file"
+                          id="modal-file-upload"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            
+                            setLoading(true);
+                            const formData = new FormData();
+                            formData.append("file", file);
+                            
+                            try {
+                              const result: any = await uploadFile(formData);
+                              setAttachments([...attachments, {
+                                name: result.name,
+                                url: result.url,
+                                fileType: result.fileType
+                              }]);
+                            } catch (error) {
+                              console.error(error);
+                            } finally {
+                              setLoading(false);
+                            }
+                          }}
+                        />
+                        {attachments.map((file, i) => (
+                          <div key={i} className="group relative w-16 h-16 rounded-xl bg-zinc-800 border border-white/10 overflow-hidden">
+                            {file.fileType.match(/(jpg|jpeg|png|webp)/) ? (
+                              <img src={file.url} className="w-full h-full object-cover" alt="" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Paperclip className="w-4 h-4 text-zinc-500" />
+                              </div>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setAttachments(attachments.filter((_, idx) => idx !== i))}
+                              className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                            >
+                              <X className="w-4 h-4 text-white" />
+                            </button>
+                          </div>
+                        ))}
+                        
+                        <button
+                          type="button"
+                          onClick={() => document.getElementById("modal-file-upload")?.click()}
+                          disabled={loading}
+                          className="w-16 h-16 rounded-xl border-2 border-dashed border-zinc-800 flex items-center justify-center text-zinc-600 hover:text-blue-500 hover:border-blue-500/50 transition-all disabled:opacity-50"
+                        >
+                          <Plus className="w-5 h-5" />
+                        </button>
+                      </div>
                   </div>
 
                   <div className="flex gap-4 pt-4">

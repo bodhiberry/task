@@ -28,7 +28,7 @@ export default function SubtaskList({ taskId, subtasks }: { taskId: string; subt
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-zinc-600">Subtasks & Checklist</h3>
+        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">Subtasks & Checklist</h3>
       </div>
       
       <div className="space-y-2">
