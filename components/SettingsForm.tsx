@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { updateProfile, updatePassword } from "@/app/actions/user";
-import { User, Lock, Shield, Eye, EyeOff, CheckCircle2, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { updateProfile, updatePassword, updatePhone, getPhone } from "@/app/actions/user";
+import { User, Lock, Shield, Eye, EyeOff, CheckCircle2, AlertCircle, MessageSquare, Phone, Smartphone } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface UserData {
@@ -21,6 +21,17 @@ export default function SettingsForm({ user }: { user: UserData }) {
     confirmPassword: "",
   });
   const [showPasswords, setShowPasswords] = useState(false);
+
+  // Phone / SMS state
+  const [phone, setPhone] = useState("");
+  const [phoneLoading, setPhoneLoading] = useState(false);
+  const [phoneSaved, setPhoneSaved] = useState(false);
+
+  useEffect(() => {
+    getPhone().then((p) => {
+      if (p) setPhone(p);
+    });
+  }, []);
 
   async function handleUpdateProfile(e: React.FormEvent) {
     e.preventDefault();
@@ -61,6 +72,26 @@ export default function SettingsForm({ user }: { user: UserData }) {
       setLoading(false);
     }
   }
+
+  async function handleUpdatePhone(e: React.FormEvent) {
+    e.preventDefault();
+    setPhoneLoading(true);
+    setMessage(null);
+    try {
+      const result = await updatePhone({ phone });
+      if (result?.success) {
+        setMessage({ type: "success", text: phone ? "WhatsApp notifications enabled!" : "WhatsApp notifications disabled." });
+        setPhoneSaved(true);
+        setTimeout(() => setPhoneSaved(false), 3000);
+      }
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || "Invalid phone number format. Use E.164 (e.g. +1234567890)" });
+    } finally {
+      setPhoneLoading(false);
+    }
+  }
+
+  const smsEnabled = phone && /^\+[1-9]\d{1,14}$/.test(phone);
 
   return (
     <div className="max-w-4xl space-y-12 pb-20">
@@ -105,6 +136,7 @@ export default function SettingsForm({ user }: { user: UserData }) {
           </form>
         </div>
       </section>
+
 
       {/* Security Section */}
       <section className="space-y-6">
@@ -186,7 +218,7 @@ export default function SettingsForm({ user }: { user: UserData }) {
           {message.type === "success" ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
           <span className="font-semibold">{message.text}</span>
           <button onClick={() => setMessage(null)} className="ml-4 text-white/50 hover:text-white">
-            <X className="w-4 h-4" />
+            <XIcon className="w-4 h-4" />
           </button>
         </motion.div>
       )}
@@ -194,7 +226,7 @@ export default function SettingsForm({ user }: { user: UserData }) {
   );
 }
 
-function X({ className }: { className: string }) {
+function XIcon({ className }: { className: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

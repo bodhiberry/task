@@ -57,3 +57,34 @@ export async function updatePassword(formData: z.infer<typeof PasswordSchema>) {
 
   return { success: true };
 }
+
+const PhoneSchema = z.object({
+  phone: z.string().regex(/^\+[1-9]\d{1,14}$/, "Phone must be in E.164 format (e.g. +1234567890)").or(z.literal("")),
+});
+
+export async function updatePhone(formData: z.infer<typeof PhoneSchema>) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const { phone } = formData;
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { phone: phone || null },
+  });
+
+  revalidatePath("/settings");
+  return { success: true };
+}
+
+export async function getPhone(): Promise<string | null> {
+  const session = await auth();
+  if (!session?.user?.id) return null;
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { phone: true },
+  });
+
+  return user?.phone || null;
+}

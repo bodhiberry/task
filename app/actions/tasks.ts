@@ -5,6 +5,12 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { v2 as cloudinary } from "cloudinary";
+import {
+  notifyTaskCreated,
+  notifyTaskStatusUpdated,
+  notifyTaskDeleted,
+  notifyTaskAssigned,
+} from "@/lib/notifications";
 
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
@@ -56,6 +62,9 @@ export async function createTask(formData: z.infer<typeof TaskSchema>) {
     },
   });
 
+  // Fire-and-forget SMS notification
+  void notifyTaskCreated(title, session.user.id);
+
   revalidatePath("/dashboard");
   revalidatePath("/tasks");
 }
@@ -64,8 +73,13 @@ export async function updateTaskStatus(taskId: string, status: "TODO" | "IN_PROG
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
+  const existingTask = await prisma.task.findUnique({ where: { id: taskId } });
+  if (!existingTask || (existingTask.userId !== session.user.id && existingTask.assignedToId !== session.user.id)) {
+    throw new Error("Task not found or unauthorized");
+  }
+
   const task = await prisma.task.update({
-    where: { id: taskId, userId: session.user.id },
+    where: { id: taskId },
     data: { 
       status,
       progress: status === "DONE" ? 100 : undefined
@@ -80,6 +94,9 @@ export async function updateTaskStatus(taskId: string, status: "TODO" | "IN_PROG
     },
   });
 
+  // Fire-and-forget SMS notification
+  void notifyTaskStatusUpdated(taskId, task.title, status, session.user.id);
+
   revalidatePath("/dashboard");
   revalidatePath("/tasks");
 }
@@ -89,13 +106,15 @@ export async function deleteTask(taskId: string) {
   if (!session?.user?.id) throw new Error("Unauthorized");
 
   const task = await prisma.task.findUnique({
-    where: { id: taskId, userId: session.user.id },
+    where: { id: taskId },
   });
 
-  if (!task) throw new Error("Task not found");
+  if (!task || (task.userId !== session.user.id && task.assignedToId !== session.user.id)) {
+    throw new Error("Task not found or unauthorized");
+  }
 
   await prisma.task.delete({
-    where: { id: taskId, userId: session.user.id },
+    where: { id: taskId },
   });
 
   await prisma.activity.create({
@@ -105,6 +124,9 @@ export async function deleteTask(taskId: string) {
       userId: session.user.id,
     },
   });
+
+  // Fire-and-forget SMS notification
+  void notifyTaskDeleted(task.title, session.user.id);
 
   revalidatePath("/dashboard");
   revalidatePath("/tasks");
@@ -233,10 +255,17 @@ export async function assignTask(taskId: string, userId: string | null) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
-  await prisma.task.update({
+  const task = await prisma.task.update({
     where: { id: taskId },
-    data: { assignedToId: userId }
+    data: { assignedToId: userId },
+    select: { title: true },
   });
+
+  // Fire-and-forget SMS notification to the assignee
+  if (userId) {
+    const assignerName = session.user.name || "Someone";
+    void notifyTaskAssigned(task.title, userId, assignerName);
+  }
 
   revalidatePath("/tasks");
 }
