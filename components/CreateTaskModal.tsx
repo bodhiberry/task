@@ -73,7 +73,7 @@ export default function CreateTaskModal() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-2xl max-h-[85vh] flex flex-col bg-zinc-900 border border-white/10 rounded-[32px] overflow-hidden shadow-2xl"
+              className="relative w-full max-w-3xl max-h-[85vh] flex flex-col bg-zinc-900 border border-white/10 rounded-[32px] overflow-hidden shadow-2xl"
             >
               {/* Fixed Header */}
               <div className="p-8 pb-4 flex items-center justify-between border-b border-white/5">

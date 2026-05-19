@@ -26,7 +26,7 @@ export default function Sidebar({ user }: { user: { name?: string | null; email?
   ];
 
   return (
-    <aside className="w-64 h-screen glass border-r border-white/5 flex flex-col p-6 z-50">
+    <aside className="shrink-0 w-64 h-screen sticky top-0 glass border-r border-white/5 flex flex-col p-6 z-50">
       <div className="flex items-center gap-3 mb-10 px-2">
         <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
           <CheckSquare className="text-white w-5 h-5" />
